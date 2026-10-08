@@ -1,0 +1,20 @@
+{
+  "name": "apex-hanseikai-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --platform=node --format=esm --target=node24 --loader:.txt=text --outfile=dist/server.mjs",
+    "start": "node dist/server.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run typecheck && npm run build && node --test \"test/*.test.mjs\""
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.28.1",
+    "typescript": "^5.9.0"
+  },
+  "dependencies": {
+    "swagger-ui-dist": "^5.33.1"
+  }
+}

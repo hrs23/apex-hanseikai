@@ -1,0 +1,28 @@
+{
+  "name": "apex-hanseikai-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest run",
+    "dev:pages": "vite --config vite.pages.config.js --host 127.0.0.1",
+    "build:pages": "cp ../server/llms.txt ../docs/public/llms.txt && vite build --config vite.pages.config.js && npm --prefix ../docs run build",
+    "dev:docs": "npm --prefix ../docs run dev"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@vitejs/plugin-react": "^4.4.1",
+    "jsdom": "^29.1.1",
+    "vite": "^7.1.7",
+    "vitest": "^4.1.10"
+  }
+}

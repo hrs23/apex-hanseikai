@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+config/
+config.json
+recordings/
+cache/
+data/
+*.mp4
+.DS_Store
+site-dist/
+.vite/
+docs/.vitepress/cache/
+docs/public/llms.txt

@@ -1,0 +1,14 @@
+# Apex Hanseikai
+
+> A self-hosted app for reviewing Apex Legends recordings together: Watch Party, timestamped notes, drawing and team principles.
+
+- [Solo setup](https://raw.githubusercontent.com/hrs23/apex-hanseikai/main/docs/en/solo.md)
+- [Squad setup](https://raw.githubusercontent.com/hrs23/apex-hanseikai/main/docs/en/squad.md)
+- [Reference: settings and principle Markdown](https://raw.githubusercontent.com/hrs23/apex-hanseikai/main/docs/en/reference.md)
+- Data: `GET /api/recordings` lists recordings (start time, duration, match end positions); `GET /api/hansei?recording=<name>` returns notes; `GET /media/rec/<name>` downloads the MP4 (Range supported); `GET /media/audio/<name without .mp4>/1.m4a` is a player's audio.
+- Notes: `POST /api/hansei` with `{"recording": "<name>", "at": "<UTC time>" or null, "body": "…"}`; `at` is the recording's `startedAt` plus the position in the video.
+- Principles: `GET /api/principles`; `PUT /api/principles/<slot>` with `{"body": "…"}`. Slot 0 is the team, 1 to 3 are personal; Markdown, up to 500 characters.
+- API: `/docs` (reference) and `/openapi.json` (spec) on the server that serves this file
+- [日本語: 1人で使う](https://raw.githubusercontent.com/hrs23/apex-hanseikai/main/docs/ja/solo.md)
+- [日本語: 3人で使う](https://raw.githubusercontent.com/hrs23/apex-hanseikai/main/docs/ja/squad.md)
+- [日本語: リファレンス](https://raw.githubusercontent.com/hrs23/apex-hanseikai/main/docs/ja/reference.md)

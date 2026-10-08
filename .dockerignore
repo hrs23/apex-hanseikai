@@ -1,0 +1,8 @@
+*
+!web
+!server
+**/node_modules
+**/dist
+**/data
+**/recordings
+**/cache

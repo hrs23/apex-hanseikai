@@ -1,0 +1,5 @@
+- Keep it simple: as few settings, files and features as the job needs.
+- Keep the docs minimal: only what you need to run or change the app, in README.md and `docs/`.
+- Every UI string goes through `t("English text")` and has a Japanese entry in `web/src/lib/i18n.js`.
+- Tests: `npm --prefix web test` and `npm --prefix server test`.
+- This is a public repository, so be careful when pushing: never commit secrets, personal data, real recordings or notes, or private hostnames and addresses. Use made-up examples.

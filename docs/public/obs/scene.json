@@ -1,0 +1,585 @@
+{
+  "name": "apex-hanseikai",
+  "DesktopAudioDevice1": {
+    "prev_ver": 537001986,
+    "name": "Desktop Audio",
+    "uuid": "736f6b94-07e7-484c-b103-af528e8835d6",
+    "id": "wasapi_output_capture",
+    "versioned_id": "wasapi_output_capture",
+    "settings": {
+      "device_id": "default"
+    },
+    "mixers": 0,
+    "sync": 0,
+    "flags": 0,
+    "volume": 1.0,
+    "balance": 0.5,
+    "enabled": true,
+    "muted": true,
+    "push-to-mute": false,
+    "push-to-mute-delay": 0,
+    "push-to-talk": false,
+    "push-to-talk-delay": 0,
+    "hotkeys": {
+      "libobs.mute": [],
+      "libobs.unmute": [],
+      "libobs.push-to-mute": [],
+      "libobs.push-to-talk": []
+    },
+    "deinterlace_mode": 0,
+    "deinterlace_field_order": 0,
+    "monitoring_type": 0,
+    "private_settings": {},
+    "filters": []
+  },
+  "AuxAudioDevice1": {
+    "prev_ver": 537001986,
+    "name": "Mic/Aux",
+    "uuid": "9138f524-6072-4fee-b511-3c08a36d189f",
+    "id": "wasapi_input_capture",
+    "versioned_id": "wasapi_input_capture",
+    "settings": {
+      "device_id": "default"
+    },
+    "mixers": 0,
+    "sync": 0,
+    "flags": 0,
+    "volume": 1.0,
+    "balance": 0.5,
+    "enabled": true,
+    "muted": true,
+    "push-to-mute": false,
+    "push-to-mute-delay": 0,
+    "push-to-talk": false,
+    "push-to-talk-delay": 0,
+    "hotkeys": {
+      "libobs.mute": [],
+      "libobs.unmute": [],
+      "libobs.push-to-mute": [],
+      "libobs.push-to-talk": []
+    },
+    "deinterlace_mode": 0,
+    "deinterlace_field_order": 0,
+    "monitoring_type": 0,
+    "private_settings": {},
+    "filters": []
+  },
+  "sources": [
+    {
+      "prev_ver": 537001986,
+      "name": "Player 1 game",
+      "uuid": "5bbaa724-4f0d-4226-b18c-ebd1dd7c63e4",
+      "id": "game_capture",
+      "versioned_id": "game_capture",
+      "settings": {
+        "capture_audio": false,
+        "window": "Apex Legends:Respawn001:r5apex_dx12.exe",
+        "capture_mode": "any_fullscreen",
+        "sli_compatibility": false
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "balance": 0.5,
+      "enabled": true,
+      "muted": false,
+      "push-to-mute": false,
+      "push-to-mute-delay": 0,
+      "push-to-talk": false,
+      "push-to-talk-delay": 0,
+      "hotkeys": {
+        "libobs.mute": [],
+        "libobs.unmute": [],
+        "libobs.push-to-mute": [],
+        "libobs.push-to-talk": [],
+        "hotkey_start": [],
+        "hotkey_stop": []
+      },
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {},
+      "filters": []
+    },
+    {
+      "prev_ver": 537001986,
+      "name": "Player 2 (SRT 10002)",
+      "uuid": "9b764d3d-a277-48c6-874d-14db6dbf06d3",
+      "id": "ffmpeg_source",
+      "versioned_id": "ffmpeg_source",
+      "settings": {
+        "input": "srt://0.0.0.0:10002?mode=listener",
+        "is_local_file": false
+      },
+      "mixers": 5,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "balance": 0.5,
+      "enabled": true,
+      "muted": false,
+      "push-to-mute": false,
+      "push-to-mute-delay": 0,
+      "push-to-talk": false,
+      "push-to-talk-delay": 0,
+      "hotkeys": {
+        "libobs.mute": [],
+        "libobs.unmute": [],
+        "libobs.push-to-mute": [],
+        "libobs.push-to-talk": [],
+        "MediaSource.Restart": [],
+        "MediaSource.Play": [],
+        "MediaSource.Pause": [],
+        "MediaSource.Stop": []
+      },
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {},
+      "filters": []
+    },
+    {
+      "prev_ver": 537001986,
+      "name": "Player 3 (SRT 10003)",
+      "uuid": "0f43a754-1e33-481b-89d7-431397dfc041",
+      "id": "ffmpeg_source",
+      "versioned_id": "ffmpeg_source",
+      "settings": {
+        "input": "srt://0.0.0.0:10003?mode=listener",
+        "is_local_file": false
+      },
+      "mixers": 9,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "balance": 0.5,
+      "enabled": true,
+      "muted": false,
+      "push-to-mute": false,
+      "push-to-mute-delay": 0,
+      "push-to-talk": false,
+      "push-to-talk-delay": 0,
+      "hotkeys": {
+        "libobs.mute": [],
+        "libobs.unmute": [],
+        "libobs.push-to-mute": [],
+        "libobs.push-to-talk": [],
+        "MediaSource.Restart": [],
+        "MediaSource.Play": [],
+        "MediaSource.Pause": [],
+        "MediaSource.Stop": []
+      },
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {},
+      "filters": []
+    },
+    {
+      "prev_ver": 537001986,
+      "name": "Player 1 mic",
+      "uuid": "7b20ca53-f0fc-4c4f-b8d2-2d839218f081",
+      "id": "wasapi_input_capture",
+      "versioned_id": "wasapi_input_capture",
+      "settings": {
+        "device_id": "default"
+      },
+      "mixers": 3,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "balance": 0.5,
+      "enabled": true,
+      "muted": false,
+      "push-to-mute": false,
+      "push-to-mute-delay": 0,
+      "push-to-talk": false,
+      "push-to-talk-delay": 0,
+      "hotkeys": {
+        "libobs.mute": [],
+        "libobs.unmute": [],
+        "libobs.push-to-mute": [],
+        "libobs.push-to-talk": []
+      },
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {},
+      "filters": []
+    },
+    {
+      "prev_ver": 537001986,
+      "name": "Game audio",
+      "uuid": "6fef7fa2-9560-494d-b1f7-9414fae60a28",
+      "id": "wasapi_process_output_capture",
+      "versioned_id": "wasapi_process_output_capture",
+      "settings": {
+        "window": "Apex Legends:Respawn001:r5apex_dx12.exe"
+      },
+      "mixers": 1,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "balance": 0.5,
+      "enabled": true,
+      "muted": false,
+      "push-to-mute": false,
+      "push-to-mute-delay": 0,
+      "push-to-talk": false,
+      "push-to-talk-delay": 0,
+      "hotkeys": {
+        "libobs.mute": [],
+        "libobs.unmute": [],
+        "libobs.push-to-mute": [],
+        "libobs.push-to-talk": []
+      },
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {},
+      "filters": []
+    },
+    {
+      "prev_ver": 537001986,
+      "name": "Apex",
+      "uuid": "cc62ea97-e0e0-4701-9b27-524f0a4102c0",
+      "id": "scene",
+      "versioned_id": "scene",
+      "settings": {
+        "id_counter": 23,
+        "custom_size": false,
+        "items": [
+          {
+            "name": "Player 3 (SRT 10003)",
+            "source_uuid": "0f43a754-1e33-481b-89d7-431397dfc041",
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "scale_ref": {
+              "x": 1920.0,
+              "y": 1080.0
+            },
+            "align": 5,
+            "bounds_type": 2,
+            "bounds_align": 0,
+            "bounds_crop": false,
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 4,
+            "pos": {
+              "x": 0.0,
+              "y": 720.0
+            },
+            "pos_rel": {
+              "x": -1.7777777910232544,
+              "y": 0.0
+            },
+            "scale": {
+              "x": 1.084259271621704,
+              "y": 1.0851852893829346
+            },
+            "scale_rel": {
+              "x": 0.8131944537162781,
+              "y": 0.8138889670372009
+            },
+            "bounds": {
+              "x": 1280.0,
+              "y": 720.0
+            },
+            "bounds_rel": {
+              "x": 1.7777777910232544,
+              "y": 1.0
+            },
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 300
+            },
+            "hide_transition": {
+              "duration": 300
+            },
+            "private_settings": {}
+          },
+          {
+            "name": "Player 2 (SRT 10002)",
+            "source_uuid": "9b764d3d-a277-48c6-874d-14db6dbf06d3",
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "scale_ref": {
+              "x": 1920.0,
+              "y": 1080.0
+            },
+            "align": 5,
+            "bounds_type": 2,
+            "bounds_align": 0,
+            "bounds_crop": false,
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 3,
+            "pos": {
+              "x": 1280.0,
+              "y": 0.0
+            },
+            "pos_rel": {
+              "x": 0.0,
+              "y": -1.0
+            },
+            "scale": {
+              "x": 0.8101851940155029,
+              "y": 0.8111111521720886
+            },
+            "scale_rel": {
+              "x": 0.6076388955116272,
+              "y": 0.6083333492279053
+            },
+            "bounds": {
+              "x": 1280.0,
+              "y": 720.0
+            },
+            "bounds_rel": {
+              "x": 1.7777777910232544,
+              "y": 1.0
+            },
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 300
+            },
+            "hide_transition": {
+              "duration": 300
+            },
+            "private_settings": {}
+          },
+          {
+            "name": "Player 1 game",
+            "source_uuid": "5bbaa724-4f0d-4226-b18c-ebd1dd7c63e4",
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "scale_ref": {
+              "x": 1920.0,
+              "y": 1080.0
+            },
+            "align": 5,
+            "bounds_type": 2,
+            "bounds_align": 0,
+            "bounds_crop": false,
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "pos_rel": {
+              "x": -1.7777777910232544,
+              "y": -1.0
+            },
+            "scale": {
+              "x": 0.6064814925193787,
+              "y": 0.6064814925193787
+            },
+            "scale_rel": {
+              "x": 0.4548611044883728,
+              "y": 0.4548611044883728
+            },
+            "bounds": {
+              "x": 1280.0,
+              "y": 720.0
+            },
+            "bounds_rel": {
+              "x": 1.7777777910232544,
+              "y": 1.0
+            },
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 300
+            },
+            "hide_transition": {
+              "duration": 300
+            },
+            "private_settings": {}
+          },
+          {
+            "name": "Player 1 mic",
+            "source_uuid": "7b20ca53-f0fc-4c4f-b8d2-2d839218f081",
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "scale_ref": {
+              "x": 2560.0,
+              "y": 1440.0
+            },
+            "align": 5,
+            "bounds_type": 0,
+            "bounds_align": 0,
+            "bounds_crop": false,
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 18,
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "pos_rel": {
+              "x": -1.7777777910232544,
+              "y": -1.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "scale_rel": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "bounds_rel": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 300
+            },
+            "hide_transition": {
+              "duration": 300
+            },
+            "private_settings": {}
+          },
+          {
+            "name": "Game audio",
+            "source_uuid": "6fef7fa2-9560-494d-b1f7-9414fae60a28",
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "scale_ref": {
+              "x": 2560.0,
+              "y": 1440.0
+            },
+            "align": 5,
+            "bounds_type": 0,
+            "bounds_align": 0,
+            "bounds_crop": false,
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 22,
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "pos_rel": {
+              "x": -1.7777777910232544,
+              "y": -1.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "scale_rel": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "bounds_rel": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 300
+            },
+            "hide_transition": {
+              "duration": 300
+            },
+            "private_settings": {}
+          }
+        ]
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "balance": 0.5,
+      "enabled": true,
+      "muted": false,
+      "push-to-mute": false,
+      "push-to-mute-delay": 0,
+      "push-to-talk": false,
+      "push-to-talk-delay": 0,
+      "hotkeys": {
+        "OBSBasic.SelectScene": [],
+        "libobs.show_scene_item.3": [],
+        "libobs.hide_scene_item.3": [],
+        "libobs.show_scene_item.4": [],
+        "libobs.hide_scene_item.4": [],
+        "libobs.show_scene_item.5": [],
+        "libobs.hide_scene_item.5": [],
+        "libobs.show_scene_item.18": [],
+        "libobs.hide_scene_item.18": [],
+        "libobs.show_scene_item.22": [],
+        "libobs.hide_scene_item.22": []
+      },
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "canvas_uuid": "6c69626f-6273-4c00-9d88-c5136d61696e",
+      "private_settings": {},
+      "filters": []
+    }
+  ],
+  "groups": [],
+  "scene_order": [
+    {
+      "name": "Apex"
+    }
+  ],
+  "current_scene": "Apex",
+  "current_program_scene": "Apex",
+  "canvases": [],
+  "current_transition": "Fade",
+  "transition_duration": 300,
+  "transitions": [],
+  "quick_transitions": [],
+  "saved_projectors": [],
+  "preview_locked": false,
+  "scaling_enabled": false,
+  "scaling_level": -7,
+  "scaling_off_x": 0.0,
+  "scaling_off_y": 0.0,
+  "virtual-camera": {
+    "type2": 3
+  },
+  "modules": {},
+  "resolution": {
+    "x": 2560,
+    "y": 1440
+  },
+  "version": 2
+}

@@ -1,0 +1,1044 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Apex Hanseikai API",
+    "version": "3.0.0",
+    "description": "Recordings, notes (hansei), principles and Watch Party. There is no authentication, so keep the server on a trusted network. Setup and the principle Markdown are in the guides: https://hrs23.github.io/apex-hanseikai/docs/en/reference.html. For LLMs: https://hrs23.github.io/apex-hanseikai/docs/llms.txt"
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "summary": "Health check",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "revision": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database unavailable"
+          }
+        },
+        "description": "200 when the server and database work, 503 otherwise. Use it for container health checks."
+      }
+    },
+    "/api/config": {
+      "get": {
+        "summary": "Site title",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "200": {
+            "description": "Site config (defaults when config.json is missing)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "The site title from `CONFIG_FILE`, used for the page heading."
+      }
+    },
+    "/api/recordings": {
+      "get": {
+        "summary": "List recordings, newest first",
+        "tags": [
+          "media"
+        ],
+        "responses": {
+          "200": {
+            "description": "Newest first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "recordings": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Recording"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid day"
+          }
+        },
+        "parameters": [
+          {
+            "name": "day",
+            "in": "query",
+            "required": false,
+            "description": "Filter by day and prioritize generation for its recordings.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          }
+        ],
+        "description": "Listing also queues any recording whose audio, match ends or thumbnails are missing."
+      }
+    },
+    "/api/hansei": {
+      "get": {
+        "summary": "List notes (filter by recording)",
+        "tags": [
+          "hansei"
+        ],
+        "parameters": [
+          {
+            "name": "recording",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Exact recording filename. Omit to list all",
+            "example": "2026-10-03 22-54-36.mp4"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ascending by time (entries without a time last)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "hansei": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Hansei"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          }
+        },
+        "description": "Notes sorted by time. Pass `recording` to get one recording's notes."
+      },
+      "post": {
+        "summary": "Add a note",
+        "tags": [
+          "hansei"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HanseiInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The added 反省",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Hansei"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "413": {
+            "description": "Body exceeds 128 KiB"
+          }
+        },
+        "description": "`at` is the absolute UTC time of the moment, or null for the whole recording. The body is trimmed and limited to 500 characters. Other viewers see it right away over `/sync/stream`."
+      }
+    },
+    "/api/hansei/{id}": {
+      "put": {
+        "summary": "Change the text of a note",
+        "tags": [
+          "hansei"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "body"
+                ],
+                "properties": {
+                  "body": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Hansei"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "details": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        },
+        "description": "Only the text changes; `at` and `recording` stay."
+      },
+      "delete": {
+        "summary": "Delete a note",
+        "tags": [
+          "hansei"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "recording": {
+                      "type": "string"
+                    },
+                    "deleted": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        },
+        "description": "Deletes the note for good."
+      }
+    },
+    "/api/log": {
+      "post": {
+        "summary": "Report an error from the UI (logged as client_error)",
+        "tags": [
+          "system"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "stack": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  },
+                  "detail": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Logged"
+          },
+          "400": {
+            "description": "Invalid body"
+          },
+          "429": {
+            "description": "More than 60 reports in a minute"
+          }
+        },
+        "description": "Internal: used by the web UI to report errors. Not meant for other clients. Rate limited (429). Entries appear in the server log."
+      }
+    },
+    "/media/rec/{name}": {
+      "get": {
+        "summary": "Recording (mp4). Supports Range requests",
+        "tags": [
+          "media"
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "2026-10-03 22-54-36.mp4"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Whole video",
+            "content": {
+              "video/mp4": {}
+            }
+          },
+          "206": {
+            "description": "Partial content for a Range request"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        },
+        "description": "Downloads the MP4. Without a `Range` header the whole file is returned. List names with `GET /api/recordings`."
+      },
+      "put": {
+        "summary": "Upload a recording",
+        "tags": [
+          "media"
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "2026-10-03 22-54-36.mp4"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "video/mp4": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid name or incomplete body"
+          },
+          "409": {
+            "description": "A recording with this name exists"
+          },
+          "411": {
+            "description": "Content-Length is required"
+          },
+          "413": {
+            "description": "Too large"
+          },
+          "415": {
+            "description": "Not an mp4 file"
+          }
+        },
+        "description": "Send the raw MP4 as the body with `Content-Type: video/mp4` and a `Content-Length`. 409 if the name is taken. The server then extracts audio, detects match ends and makes thumbnails."
+      }
+    },
+    "/media/audio/{recording}/{file}": {
+      "get": {
+        "summary": "Derived audio tracks and thumbnail sheets",
+        "tags": [
+          "media"
+        ],
+        "parameters": [
+          {
+            "name": "recording",
+            "in": "path",
+            "required": true,
+            "description": "Recording name without extension",
+            "schema": {
+              "type": "string",
+              "example": "2026-10-03 22-54-36"
+            }
+          },
+          {
+            "name": "file",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "1.m4a"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File"
+          },
+          "206": {
+            "description": "Partial content for a Range request"
+          },
+          "404": {
+            "description": "Not generated yet"
+          }
+        },
+        "description": "`1.m4a` and up are the audio of each player in cell order (see `players`). `thumbs_1.jpg` and up are seek bar thumbnail sheets, present when `thumbnails` is true."
+      }
+    },
+    "/sync/stream": {
+      "get": {
+        "summary": "Subscribe to Watch Party (Server-Sent Events)",
+        "tags": [
+          "sync"
+        ],
+        "description": "On connect, the current state and viewer count are sent. After that, changes made by others, viewer count changes, note changes, recording changes and lines drawn on the picture are sent.",
+        "parameters": [
+          {
+            "name": "client",
+            "in": "query",
+            "required": true,
+            "description": "Random ID per tab",
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{1,40}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Events: state (SyncState or null, with the optional action label), viewers ({count, typing}), hansei ({recording}), recordings (the list or a recording's state changed), draw ({recording, from, stroke, points})",
+            "content": {
+              "text/event-stream": {}
+            }
+          },
+          "400": {
+            "description": "Invalid client"
+          }
+        }
+      }
+    },
+    "/sync/state": {
+      "get": {
+        "summary": "Current playback state and server time",
+        "tags": [
+          "sync"
+        ],
+        "responses": {
+          "200": {
+            "description": "Snapshot for reconnect and clock calibration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncSnapshot"
+                }
+              }
+            }
+          }
+        },
+        "description": "The latest shared state without subscribing. Use `serverTime` to align clocks."
+      }
+    },
+    "/sync/event": {
+      "post": {
+        "summary": "Send playback state (delivered to everyone else)",
+        "tags": [
+          "sync"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncEvent"
+              }
+            }
+          }
+        },
+        "responses": {
+          "400": {
+            "description": "Invalid value"
+          },
+          "200": {
+            "description": "Current state; older client sequences are ignored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncSnapshot"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sync/presence": {
+      "post": {
+        "summary": "Join or leave the Watch Party, and say whether this client is typing a note",
+        "tags": [
+          "sync"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "client",
+                  "active"
+                ],
+                "properties": {
+                  "client": {
+                    "type": "string"
+                  },
+                  "active": {
+                    "type": "boolean"
+                  },
+                  "typing": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Updated"
+          },
+          "400": {
+            "description": "Unknown client or invalid body"
+          }
+        },
+        "description": "Send `active: true` when joining and `false` when leaving. `typing` shows others that this client is writing a note."
+      }
+    },
+    "/sync/draw": {
+      "post": {
+        "summary": "Draw on the picture for the other viewers",
+        "tags": [
+          "sync"
+        ],
+        "description": "Points are relayed to the other viewers and not stored. Send a line in several requests as it is drawn, with the same stroke number.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "client",
+                  "recording",
+                  "stroke",
+                  "points"
+                ],
+                "properties": {
+                  "client": {
+                    "type": "string"
+                  },
+                  "recording": {
+                    "type": "string"
+                  },
+                  "stroke": {
+                    "type": "integer",
+                    "description": "The sender's number for this line"
+                  },
+                  "points": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "description": "x, y, x, y, … as fractions of the whole picture. An empty list erases every line"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Relayed"
+          },
+          "400": {
+            "description": "Unknown client or invalid body"
+          }
+        }
+      }
+    },
+    "/api/principles": {
+      "get": {
+        "summary": "The four principle slots (overall first)",
+        "tags": [
+          "principles"
+        ],
+        "responses": {
+          "200": {
+            "description": "Always four slots",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "principles": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "slot": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 3,
+                            "description": "0 is the overall principle, 1 to 3 are personal."
+                          },
+                          "body": {
+                            "type": "string",
+                            "maxLength": 500,
+                            "description": "Markdown. Empty when unset."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/principles/{slot}": {
+      "put": {
+        "summary": "Replace the Markdown of one slot",
+        "tags": [
+          "principles"
+        ],
+        "parameters": [
+          {
+            "name": "slot",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "body"
+                ],
+                "properties": {
+                  "body": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "description": "Markdown. Empty when unset."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "slot": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 3,
+                      "description": "0 is the overall principle, 1 to 3 are personal."
+                    },
+                    "body": {
+                      "type": "string",
+                      "maxLength": 500,
+                      "description": "Markdown. Empty when unset."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Too long"
+          },
+          "404": {
+            "description": "Unknown slot"
+          }
+        },
+        "description": "Whitespace around the text is trimmed; an empty string clears the slot."
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "Invalid": {
+        "description": "Invalid input",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string"
+                },
+                "details": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Hansei": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Absolute time (UTC), recording `startedAt` + position. null for a note about the whole recording"
+          },
+          "body": {
+            "type": "string",
+            "description": "Note text, up to 500 characters"
+          },
+          "created_at": {
+            "type": "string",
+            "description": "When the note was added"
+          },
+          "recording": {
+            "type": "string",
+            "description": "Recording file name"
+          }
+        }
+      },
+      "HanseiInput": {
+        "type": "object",
+        "required": [
+          "recording",
+          "at",
+          "body"
+        ],
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "recording": {
+            "type": "string",
+            "example": "2026-10-03 22-54-36.mp4"
+          }
+        }
+      },
+      "Recording": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "2026-10-03 22-54-36.mp4"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "recording",
+              "processing",
+              "ready"
+            ],
+            "description": "recording: still being written. processing: audio, match ends or thumbnails are still being generated. ready: nothing left to do"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation time stored in the file, or the time in the file name when there is none"
+          },
+          "duration": {
+            "type": "number",
+            "description": "Seconds. 0 while unknown"
+          },
+          "players": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Names of audio tracks 2 and up, one per player, in cell order. Empty for a single-track recording or until the audio is extracted"
+          },
+          "thumbnails": {
+            "type": "boolean"
+          },
+          "matchEnds": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "Match end positions in seconds"
+          }
+        }
+      },
+      "SyncEvent": {
+        "type": "object",
+        "required": [
+          "recording",
+          "client",
+          "playing",
+          "position",
+          "rate",
+          "view",
+          "clientSeq",
+          "sentAt"
+        ],
+        "properties": {
+          "recording": {
+            "type": "string",
+            "example": "2026-10-03 22-54-36.mp4"
+          },
+          "client": {
+            "type": "string"
+          },
+          "playing": {
+            "type": "boolean"
+          },
+          "position": {
+            "type": "number",
+            "minimum": 0
+          },
+          "rate": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 4
+          },
+          "view": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4,
+            "description": "0 is all players, 1 to 4 are the players: top left, top right, bottom left, bottom right"
+          },
+          "clientSeq": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Increasing sequence number per client"
+          },
+          "sentAt": {
+            "type": "number",
+            "description": "Send time in server-aligned Unix milliseconds"
+          },
+          "action": {
+            "type": "string",
+            "description": "Optional label shown to the other viewers, such as Next note"
+          }
+        }
+      },
+      "SyncState": {
+        "type": "object",
+        "properties": {
+          "recording": {
+            "type": "string",
+            "example": "2026-10-03 22-54-36.mp4",
+            "description": "Recording being watched"
+          },
+          "playing": {
+            "type": "boolean",
+            "description": "Whether playback is running"
+          },
+          "position": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Seconds at the time `at`; extrapolate with `rate` while playing"
+          },
+          "rate": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 4,
+            "description": "Playback speed"
+          },
+          "view": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4,
+            "description": "0 is all players, 1 to 4 are the players: top left, top right, bottom left, bottom right"
+          },
+          "at": {
+            "type": "number",
+            "description": "Server time in Unix milliseconds when this state was set"
+          },
+          "from": {
+            "type": "string",
+            "description": "Client that sent it"
+          },
+          "seq": {
+            "type": "integer",
+            "description": "That client's `clientSeq`"
+          }
+        }
+      },
+      "SyncSnapshot": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SyncState"
+              }
+            ],
+            "nullable": true,
+            "description": "Latest shared state, null before anyone has sent one"
+          },
+          "serverTime": {
+            "type": "number",
+            "description": "Server Unix milliseconds, for aligning clocks"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "system",
+      "description": "Health, site title and UI error reports."
+    },
+    {
+      "name": "media",
+      "description": "Recordings, their processing state, uploads and derived audio and thumbnails."
+    },
+    {
+      "name": "hansei",
+      "description": "Timestamped notes on recordings."
+    },
+    {
+      "name": "principles",
+      "description": "The four principle cards on the home page: slot 0 is the team, 1 to 3 are personal. The Markdown rules are in the reference guide."
+    },
+    {
+      "name": "sync",
+      "description": "Used by the web UI for Watch Party; not meant for external clients. Watch Party. Open `GET /sync/stream?client=<id>` (it sends the current state and viewer count first), call `POST /sync/presence` with `active: true`, then send playback changes with `POST /sync/event`, increasing `clientSeq` every time. Align clocks with `serverTime`."
+    }
+  ]
+}

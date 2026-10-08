@@ -1,0 +1,75 @@
+import assert from "node:assert/strict";
+import { after, before, test } from "node:test";
+import { mkdtemp, mkdir, readdir, writeFile, stat, utimes, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { startServer } from "./harness.mjs";
+
+let app;
+let root;
+const name = "2026-01-03 21-00-00.mp4";
+before(async () => {
+  root = await mkdtemp(join(tmpdir(), "apex-media-"));
+  const rec = join(root, "rec");
+  const audio = join(root, "audio");
+  const dir = join(audio, name.slice(0, -4));
+  await mkdir(rec); await mkdir(dir, { recursive: true });
+  const file = join(rec, name);
+  await writeFile(file, "0123456789");
+  await utimes(file, new Date(Date.now() - 600_000), new Date(Date.now() - 600_000));
+  const source = await stat(file);
+  await writeFile(join(dir, "meta.json"), JSON.stringify({ v: 1, source: { size: source.size, mtimeMs: source.mtimeMs }, duration: 120, players: ["Ann", "Bo"], tracks: 3, matchEnds: [60], thumbs: { sheets: 1, every: 10, cols: 10, w: 240, h: 135 }, errors: {}, retries: {} }));
+  const stale = join(rec, ".upload-stale");
+  await writeFile(stale, "x");
+  await utimes(stale, new Date(Date.now() - 7_200_000), new Date(Date.now() - 7_200_000));
+  await writeFile(join(rec, ".upload-live"), "x");
+  await writeFile(join(root, "config.json"), JSON.stringify({ title: "Team" }));
+  app = await startServer({ RECORDINGS_DIR: rec, CACHE_DIR: audio, TZ: "Asia/Tokyo", CONFIG_FILE: join(root, "config.json") });
+});
+after(async () => { app?.stop(); await rm(root, { recursive: true, force: true }); });
+test("lists cached playback metadata and filters by day", async () => {
+  const response = await fetch(`${app.base}/api/recordings?day=2026-01-03`);
+  const { recordings } = await response.json();
+  assert.equal(recordings.length, 1);
+  assert.equal(recordings[0].duration, 120);
+  assert.equal(recordings[0].state, "ready");
+  assert.deepEqual(recordings[0].players, ["Ann", "Bo"]);
+  assert.equal(recordings[0].startedAt, "2026-01-03T12:00:00.000Z");
+  assert.deepEqual(recordings[0].matchEnds, [60]);
+  assert.equal(recordings[0].thumbnails, true);
+  assert.deepEqual(await (await fetch(`${app.base}/api/recordings?day=2026-01-02`)).json(), { recordings: [] });
+});
+test("serves the site config with defaults for missing values", async () => {
+  assert.deepEqual(await (await fetch(`${app.base}/api/config`)).json(), { title: "Team" });
+});
+test("serves byte ranges and HEAD without reading unrelated paths", async () => {
+  const url = `${app.base}/media/rec/${encodeURIComponent(name)}`;
+  const response = await fetch(url, { headers: { Range: "bytes=2-5" } });
+  assert.equal(response.status, 206); assert.equal(response.headers.get("Content-Range"), "bytes 2-5/10");
+  assert.equal(await response.text(), "2345");
+  assert.equal((await fetch(url, { headers: { Range: "bytes=20-" } })).status, 416);
+  const head = await fetch(url, { method: "HEAD" });
+  assert.equal(head.headers.get("Content-Length"), "10"); assert.equal(await head.text(), "");
+  const etag = head.headers.get("ETag");
+  assert.ok(etag);
+  const cached = await fetch(url, { headers: { "If-None-Match": etag } });
+  assert.equal(cached.status, 304); assert.equal(await cached.text(), "");
+  assert.equal((await fetch(url, { headers: { "If-None-Match": '"other"' } })).status, 200);
+  assert.equal((await fetch(`${app.base}/media/rec/%E0%A4%A`)).status, 400);
+  assert.equal((await fetch(`${app.base}/api/health`)).status, 200);
+});
+test("uploads a recording once, rejects duplicates, non-mp4 files and bad names", async () => {
+  const upload = (file, body) => fetch(`${app.base}/media/rec/${encodeURIComponent(file)}`, { method: "PUT", body });
+  const mp4 = Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from("ftypisom"), Buffer.alloc(32)]);
+  const fresh = "2026-10-05 10-00-00.mp4";
+  const saved = await upload(fresh, mp4);
+  assert.equal(saved.status, 201);
+  const file = join(root, "rec", fresh);
+  assert.equal((await stat(file)).size, mp4.length);
+  assert.equal((await stat(file)).mtime.getFullYear(), 2026);
+  assert.equal((await upload(fresh, mp4)).status, 409);
+  assert.equal((await upload("2026-10-05 11-00-00.mp4", Buffer.alloc(64))).status, 415);
+  assert.equal((await upload("movie.mp4", mp4)).status, 400);
+  assert.deepEqual((await readdir(join(root, "rec"))).filter((item) => item.startsWith(".upload")), [".upload-live"]);
+  assert.equal((await readdir(join(root, "rec"))).includes("2026-10-05 11-00-00.mp4"), false);
+});

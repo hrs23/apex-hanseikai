@@ -1,0 +1,19 @@
+services:
+  app:
+    image: ghcr.io/hrs23/apex-hanseikai:latest
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-UTC}
+      CONFIG_FILE: /config/config.json
+      RECORDINGS_DIR: /recordings
+      CACHE_DIR: /cache
+    ports:
+      - "${BIND_IP:-127.0.0.1}:${PORT:-8080}:8080"
+    volumes:
+      - data:/data
+      - ./config:/config:ro
+      - ${RECORDINGS_DIR:-./recordings}:/recordings
+      - ${CACHE_DIR:-./cache}:/cache
+
+volumes:
+  data:
