@@ -964,6 +964,10 @@
               null
             ],
             "description": "The 720p version: ready, being made, or null when nobody asked for it"
+          },
+          "progress": {
+            "type": "integer",
+            "description": "Percent done while `low` is `processing`"
           }
         }
       },

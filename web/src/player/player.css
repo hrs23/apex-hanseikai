@@ -43,7 +43,7 @@
 #pvimg { width: 240px; height: 135px; background: #000 no-repeat; border: 1px solid var(--line-strong); border-radius: 4px; }
 #pvtime { display: inline-block; margin-top: 2px; padding: 1px 8px; background: rgba(0, 0, 0, 0.8); color: white; border-radius: 4px; font-variant-numeric: tabular-nums; }
 #row { display: flex; align-items: center; gap: 2px; margin-top: 2px; flex-wrap: wrap; }
-.pl-group { display: flex; align-items: center; gap: 2px; }
+.pl-group { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 2px; }
 .pl-spacer { flex: 1; }
 .pl-player #controls button, .pl-player #controls select, .pl-player #controls a { display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 4px; background: transparent; color: var(--pl-dim); padding: 4px 8px; font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; }
 .pl-player #controls button:hover, .pl-player #controls select:hover, .pl-player #controls a:hover { color: var(--pl-fg); background: rgba(128, 128, 128, 0.18); }

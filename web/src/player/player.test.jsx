@@ -480,7 +480,10 @@ describe("player interactions", () => {
     fireEvent.change(quality, { target: { value: "low" } });
     const request = fetch.mock.calls.find(([url]) => url === "/api/derived");
     expect(JSON.parse(request[1].body)).toEqual({ recording: recording.name, stage: "low" });
-    expect(quality.selectedOptions[0].text).toBe("Making 720p…");
+    expect(quality.selectedOptions[0].text).toBe("Making 720p… 0%");
+    fetch.mockImplementation(async (url) => ({ ok: true, json: async () => url.startsWith("/api/recordings") ? { recordings: [{ ...recording, height: 1440, low: "processing", progress: 42 }] } : { hansei: [] } }));
+    syncOptions.current.onRecordings();
+    await waitFor(() => expect(quality.selectedOptions[0].text).toBe("Making 720p… 42%"));
     expect(video.getAttribute("src")).toContain("/media/rec/");
     list("ready");
     syncOptions.current.onRecordings();

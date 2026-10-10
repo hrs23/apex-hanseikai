@@ -22,7 +22,7 @@ export interface Metadata {
   retries: Record<string, { attempts: number; after: number }>;
 }
 interface Config { recordingsDir: string; cacheDir: string }
-type Runner = (command: string, args: string[], signal?: AbortSignal) => Promise<string>;
+type Runner = (command: string, args: string[], signal?: AbortSignal, onOutput?: (text: string) => void) => Promise<string>;
 const RETRY_DELAYS_MS = [600_000, 3_600_000, 21_600_000, 21_600_000];
 const MAX_ATTEMPTS = RETRY_DELAYS_MS.length + 1;
 const SCAN_MS = 10_000;
@@ -40,11 +40,11 @@ export async function readMetadata(dir: string): Promise<Metadata | null> {
 
 const TIMEOUTS_MS: Record<string, number> = { ffprobe: 120_000, ffmpeg: 3 * 3_600_000 };
 
-export const run: Runner = (command, args, signal) => new Promise((accept, reject) => {
+export const run: Runner = (command, args, signal, onOutput) => new Promise((accept, reject) => {
   const child = spawn("nice", ["-n", "10", command, ...args], { stdio: ["ignore", "pipe", "pipe"], timeout: TIMEOUTS_MS[command] ?? 600_000, signal });
   let output = "";
   let error = "";
-  child.stdout.on("data", (data) => { output += data; });
+  child.stdout.on("data", (data) => { output += data; onOutput?.(String(data)); });
   child.stderr.on("data", (data) => { error = (error + data).slice(-2000); });
   child.on("error", reject);
   child.on("close", (code, signal) => code === 0 ? accept(output) : reject(new Error(signal ? `${command} killed by ${signal} (timeout)` : error.trim() || `${command} exited ${code}`)));
@@ -58,7 +58,9 @@ export class DerivedCache {
   private probes = new Map<string, Promise<Metadata | null>>();
   private settled = new Set<string>();
   private requests = new Map<string, Set<string>>();
+  private making = { name: "", percent: 0 };
   private names = "";
+  private stopped = false;
   constructor(private config: Config, private execute: Runner = run, private now = Date.now, private changed = () => {}) {}
 
   async scan(): Promise<void> {
@@ -75,7 +77,10 @@ export class DerivedCache {
     this.timer = setInterval(scan, SCAN_MS);
     this.timer.unref();
   }
-  stop(): void { clearInterval(this.timer); }
+  stop(): void {
+    this.stopped = true;
+    clearInterval(this.timer);
+  }
   private recording(): Promise<boolean> { return recordingActive(this.config.recordingsDir, this.now(), this.settled); }
   writing(name: string, source: Source): Promise<boolean> { return writing(join(this.config.recordingsDir, name), source.mtimeMs, this.now()); }
   enqueue(name: string, priority = false): void {
@@ -101,6 +106,7 @@ export class DerivedCache {
     if (meta?.low) return existsSync(join(this.config.cacheDir, name.slice(0, -4), "low.mp4")) ? "ready" : null;
     return meta?.low === false && (meta.retries.low?.attempts ?? 0) < MAX_ATTEMPTS ? "processing" : null;
   }
+  progress(name: string): number { return this.making.name === name ? this.making.percent : 0; }
   async idle(): Promise<void> { await this.running; }
   private async drain(): Promise<void> {
     while (this.queue.length) {
@@ -163,6 +169,7 @@ export class DerivedCache {
     if (await this.recording()) return;
     this.changed();
     const dir = join(this.config.cacheDir, name.slice(0, -4));
+    for (const entry of await readdir(dir)) if (entry.startsWith(".generate-")) await rm(join(dir, entry), { recursive: true, force: true });
     const temp = await mkdtemp(join(dir, ".generate-"));
     const began = Date.now();
     const controller = new AbortController();
@@ -176,7 +183,7 @@ export class DerivedCache {
       delete meta.retries[key];
       log("derived_stage", { name, key, ms: Date.now() - began });
     } catch (error) {
-      if (controller.signal.aborted) return log("derived_stage_aborted", { name, key, ms: Date.now() - began });
+      if (controller.signal.aborted || this.stopped) return log("derived_stage_aborted", { name, key, ms: Date.now() - began });
       const attempts = (retry?.attempts ?? 0) + 1;
       log("derived_stage_failed", { name, key, attempts, error: errorText(error) });
       meta.errors[key] = error instanceof Error ? error.message : String(error);
@@ -204,12 +211,14 @@ export class DerivedCache {
     if (requested) {
       this.requests.delete(name);
       for (const key of requested) {
+        if (key === "low" && this.low(name, meta)) continue;
         delete meta[RESULTS[key]];
         delete meta.errors[key];
         delete meta.retries[key];
+        if (key === "low") meta.low = false;
       }
-      if (requested.has("low")) meta.low = false;
       await this.save(name, meta);
+      this.changed();
     }
     if (this.todo(meta).audio) await this.stage(name, meta, "audio", async (temp, signal) => {
       const info = JSON.parse(await this.execute("ffprobe", ["-v", "error", "-select_streams", "a", "-show_entries", "stream=index", "-of", "json", file], signal));
@@ -229,9 +238,16 @@ export class DerivedCache {
       return { thumbs: { sheets, every: 10, cols: 10, w: 240, h: 135 } };
     });
     if (this.todo(meta).low) await this.stage(name, meta, "low", async (temp, signal) => {
-      await this.execute("ffmpeg", ["-nostdin", "-y", "-v", "error", "-i", file, "-map", "0:v:0", "-map", "0:a:0?", "-vf", `fps=30,scale=-2:${LOW_HEIGHT}`, "-c:v", "libx264", "-preset", "veryfast", "-crf", "26", "-c:a", "copy", "-movflags", "+faststart", join(temp, "low.mp4")], signal);
+      this.making = { name, percent: 0 };
+      await this.execute("ffmpeg", ["-nostdin", "-y", "-v", "error", "-progress", "pipe:1", "-i", file, "-map", "0:v:0", "-map", "0:a:0?", "-vf", `fps=30,scale=-2:${LOW_HEIGHT}`, "-c:v", "libx264", "-preset", "veryfast", "-crf", "26", "-c:a", "copy", "-movflags", "+faststart", join(temp, "low.mp4")], signal, (text) => {
+        const percent = Math.min(99, Math.floor(Number(text.match(/out_time_us=(\d+)/)?.[1] ?? 0) / 1e4 / meta.duration!));
+        if (percent <= this.making.percent) return;
+        this.making.percent = percent;
+        this.changed();
+      });
       return { low: true };
     });
+    this.making = { name: "", percent: 0 };
     if (!Object.values(this.todo(meta)).some(Boolean) && !this.requests.has(name)) this.settled.add(name);
   }
 }

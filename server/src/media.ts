@@ -32,6 +32,7 @@ interface Recording {
   matchEnds: number[];
   height: number;
   low: "ready" | "processing" | null;
+  progress: number;
 }
 
 export async function listRecordings(config: MediaConfig, cache: DerivedCache, day?: string): Promise<Recording[]> {
@@ -61,6 +62,7 @@ export async function listRecordings(config: MediaConfig, cache: DerivedCache, d
       thumbnails: !!meta?.thumbs,
       height: meta?.height ?? 0,
       low: cache.low(name, meta),
+      progress: cache.progress(name),
     });
   }
   return result.sort((a, b) => b.startedAt.localeCompare(a.startedAt));

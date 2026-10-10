@@ -100,7 +100,8 @@ export function createPlayer(root, { recording, startAt = 0, view = 0, sync = fa
   function showQuality() {
     const { low } = info;
     $("quality").hidden = !(info.height > LOW_HEIGHT);
-    $("quality").replaceChildren(new Option(`${info.height}p`, "high"), new Option(low === "ready" ? `${LOW_HEIGHT}p` : low ? t("Making 720p…") : t("Make 720p"), "low"));
+    $("quality").options[0].text = `${info.height}p`;
+    $("quality").options[1].text = low === "ready" ? `${LOW_HEIGHT}p` : low ? t("Making 720p… {n}%", { n: info.progress }) : t("Make 720p");
     $("quality").value = wantLow && low ? "low" : "high";
     swap(wantLow && low === "ready");
   }
@@ -204,7 +205,7 @@ export function createPlayer(root, { recording, startAt = 0, view = 0, sync = fa
     wantLow = $("quality").value === "low";
     try { localStorage.setItem(QUALITY_KEY, wantLow ? "low" : "high"); } catch {}
     if (wantLow && !info.low) {
-      info = { ...info, low: "processing" };
+      info = { ...info, low: "processing", progress: 0 };
       api("/api/derived", { method: "POST", body: JSON.stringify({ recording: `${s.name}.mp4`, stage: "low" }) }).catch(() => void fetchMetadata());
     }
     showQuality();

@@ -125,7 +125,7 @@ const JA = {
   "Speed": "速度",
   "Quality": "画質",
   "Make 720p": "720p を作成",
-  "Making 720p…": "720p を作成中…",
+  "Making 720p… {n}%": "720p を作成中… {n}%",
   "Speed {rate}x": "速度 {rate}x",
   "Mute": "ミュート",
   "Mute (M)": "ミュート (M)",
