@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { readObject } from "./json";
-import { log } from "./log";
+import { clientIp, log } from "./log";
 import { MAX_PLAYERS, RECORDING_NAME } from "./recording";
 
 const CLIENT_ID = /^[\w-]{1,40}$/;
@@ -8,6 +8,7 @@ const EVENT_MAX_BYTES = 1024;
 const PING_MS = 20_000;
 const ACTION_MAX_CHARS = 40;
 const EMPTY_ROOM_MS = 30_000;
+const COLORS = 6;
 
 interface PlaybackState {
   recording: string;
@@ -22,6 +23,7 @@ interface PlaybackState {
 
 interface Client {
   res: ServerResponse;
+  color?: number;
   active: boolean;
   typing: boolean;
 }
@@ -95,7 +97,7 @@ function stream(req: IncomingMessage, res: ServerResponse, client: string): void
   room.clients.get(client)?.res.end();
   room.clients.set(client, { res, active: false, typing: false });
   send(res, "state", room.state ? current(room.state) : null);
-  log("sync_connect", { client: client.slice(0, 8), clients: room.clients.size, ip: req.socket.remoteAddress });
+  log("sync_connect", { client: client.slice(0, 8), clients: room.clients.size, ip: clientIp(req) });
   announceViewers();
   const timer = setInterval(() => send(res, "ping", {}), PING_MS);
   res.on("error", () => {});
@@ -118,6 +120,13 @@ async function presence(req: IncomingMessage, res: ServerResponse): Promise<void
   }
   entry.active = body.active;
   entry.typing = body.typing === true;
+  if (entry.color === undefined) {
+    const used = new Set([...room.clients.values()].map((other) => other.color));
+    let color = (Number(body.color) >>> 0) % COLORS;
+    for (let tries = 1; tries < COLORS && used.has(color); tries++) color = (color + 1) % COLORS;
+    entry.color = color;
+    send(entry.res, "color", { color });
+  }
   announceViewers();
   res.writeHead(204).end();
 }
@@ -161,7 +170,7 @@ async function draw(req: IncomingMessage, res: ServerResponse): Promise<void> {
     res.writeHead(400).end();
     return;
   }
-  broadcast("draw", { recording, from: client, stroke, points }, client);
+  broadcast("draw", { recording, from: client, stroke, points, color: room.clients.get(client)!.color ?? 0 }, client);
   res.writeHead(204).end();
 }
 

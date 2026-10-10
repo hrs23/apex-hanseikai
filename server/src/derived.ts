@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { detectEnds } from "./detect";
@@ -12,9 +13,11 @@ export interface Metadata {
   duration?: number;
   startedAt?: string;
   players?: string[];
+  height?: number;
   tracks?: number;
   matchEnds?: number[];
   thumbs?: { sheets: number; every: number; cols: number; w: number; h: number };
+  low?: boolean;
   errors: Record<string, string>;
   retries: Record<string, { attempts: number; after: number }>;
 }
@@ -24,6 +27,8 @@ const RETRY_DELAYS_MS = [600_000, 3_600_000, 21_600_000, 21_600_000];
 const MAX_ATTEMPTS = RETRY_DELAYS_MS.length + 1;
 const SCAN_MS = 10_000;
 export type State = "recording" | "processing" | "ready";
+const RESULTS: Record<string, "tracks" | "matchEnds" | "thumbs" | "low"> = { audio: "tracks", markers: "matchEnds", thumbs: "thumbs", low: "low" };
+const LOW_HEIGHT = 720;
 export const sameSource = (a: Source | undefined, b: Source) => a?.size === b.size && a.mtimeMs === b.mtimeMs;
 
 export async function readMetadata(dir: string): Promise<Metadata | null> {
@@ -52,6 +57,7 @@ export class DerivedCache {
   private timer?: NodeJS.Timeout;
   private probes = new Map<string, Promise<Metadata | null>>();
   private settled = new Set<string>();
+  private requests = new Map<string, Set<string>>();
   private names = "";
   constructor(private config: Config, private execute: Runner = run, private now = Date.now, private changed = () => {}) {}
 
@@ -81,6 +87,19 @@ export class DerivedCache {
     this.pending.add(name);
     if (priority) this.queue.unshift(name); else this.queue.push(name);
     this.running ??= this.drain().finally(() => { this.running = null; });
+  }
+  request(name: unknown, key: unknown): boolean {
+    if (typeof name !== "string" || typeof key !== "string" || !RECORDING_NAME.test(name) || !(key in RESULTS) || !existsSync(join(this.config.recordingsDir, name))) return false;
+    this.requests.set(name, (this.requests.get(name) ?? new Set()).add(key));
+    this.settled.delete(name);
+    this.enqueue(name, true);
+    this.changed();
+    return true;
+  }
+  low(name: string, meta: Metadata | null): "ready" | "processing" | null {
+    if (this.requests.get(name)?.has("low")) return "processing";
+    if (meta?.low) return existsSync(join(this.config.cacheDir, name.slice(0, -4), "low.mp4")) ? "ready" : null;
+    return meta?.low === false && (meta.retries.low?.attempts ?? 0) < MAX_ATTEMPTS ? "processing" : null;
   }
   async idle(): Promise<void> { await this.running; }
   private async drain(): Promise<void> {
@@ -120,9 +139,9 @@ export class DerivedCache {
     const dir = join(this.config.cacheDir, name.slice(0, -4));
     const previous = await readMetadata(dir);
     const kept: Partial<Metadata> = sameSource(previous?.source, source) ? previous! : {};
-    if (kept.duration !== undefined && kept.players) return previous;
+    if (kept.duration !== undefined && kept.players && kept.height !== undefined) return previous;
     let info;
-    try { info = JSON.parse(await this.execute("ffprobe", ["-v", "error", "-show_entries", "format=duration:format_tags=creation_time:stream=codec_type", "-of", "json", file])); }
+    try { info = JSON.parse(await this.execute("ffprobe", ["-v", "error", "-show_entries", "format=duration:format_tags=creation_time:stream=codec_type,height", "-of", "json", file])); }
     catch { info = {}; }
     const duration = Number(info.format?.duration);
     if (!Number.isFinite(duration) || duration <= 0) {
@@ -132,9 +151,10 @@ export class DerivedCache {
     const names = await audioNames(file).catch(() => []);
     const voices = info.streams.filter((stream: { codec_type: string }) => stream.codec_type === "audio").length - 1;
     const players = Array.from({ length: Math.min(Math.max(voices, 0), MAX_PLAYERS) }, (_, index) => names[index + 1] || `Player ${index + 1}`);
+    const height = Number(info.streams.find((stream: { codec_type: string }) => stream.codec_type === "video")?.height) || 0;
     const created = Date.parse(info.format.tags?.creation_time);
     const startedAt = Number.isFinite(created) ? new Date(created).toISOString() : undefined;
-    const meta: Metadata = { errors: {}, retries: {}, ...kept, v: 1, source: { size: source.size, mtimeMs: source.mtimeMs }, duration, startedAt, players };
+    const meta: Metadata = { errors: {}, retries: {}, ...kept, v: 1, source: { size: source.size, mtimeMs: source.mtimeMs }, duration, startedAt, players, height };
     return await this.save(name, meta) ? meta : null;
   }
   private async stage(name: string, meta: Metadata, key: string, action: (temp: string, signal: AbortSignal) => Promise<Partial<Metadata>>): Promise<void> {
@@ -169,7 +189,7 @@ export class DerivedCache {
     }
   }
   private todo(meta: Metadata): Record<string, boolean> {
-    return { audio: meta.tracks === undefined, markers: meta.tracks !== undefined && meta.matchEnds === undefined, thumbs: !meta.thumbs };
+    return { audio: meta.tracks === undefined, markers: meta.tracks !== undefined && meta.matchEnds === undefined, thumbs: !meta.thumbs, low: meta.low === false };
   }
   state(meta: Metadata | null, writing: boolean): State {
     if (writing) return "recording";
@@ -180,6 +200,17 @@ export class DerivedCache {
     const meta = await this.metadata(name);
     if (!meta) return;
     const file = join(this.config.recordingsDir, name);
+    const requested = this.requests.get(name);
+    if (requested) {
+      this.requests.delete(name);
+      for (const key of requested) {
+        delete meta[RESULTS[key]];
+        delete meta.errors[key];
+        delete meta.retries[key];
+      }
+      if (requested.has("low")) meta.low = false;
+      await this.save(name, meta);
+    }
     if (this.todo(meta).audio) await this.stage(name, meta, "audio", async (temp, signal) => {
       const info = JSON.parse(await this.execute("ffprobe", ["-v", "error", "-select_streams", "a", "-show_entries", "stream=index", "-of", "json", file], signal));
       const count = info.streams.length;
@@ -197,6 +228,10 @@ export class DerivedCache {
       if (!sheets) throw new Error("no thumbnails");
       return { thumbs: { sheets, every: 10, cols: 10, w: 240, h: 135 } };
     });
-    if (!Object.values(this.todo(meta)).some(Boolean)) this.settled.add(name);
+    if (this.todo(meta).low) await this.stage(name, meta, "low", async (temp, signal) => {
+      await this.execute("ffmpeg", ["-nostdin", "-y", "-v", "error", "-i", file, "-map", "0:v:0", "-map", "0:a:0?", "-vf", `fps=30,scale=-2:${LOW_HEIGHT}`, "-c:v", "libx264", "-preset", "veryfast", "-crf", "26", "-c:a", "copy", "-movflags", "+faststart", join(temp, "low.mp4")], signal);
+      return { low: true };
+    });
+    if (!Object.values(this.todo(meta)).some(Boolean) && !this.requests.has(name)) this.settled.add(name);
   }
 }

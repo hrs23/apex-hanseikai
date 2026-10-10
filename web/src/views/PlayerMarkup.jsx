@@ -90,6 +90,7 @@ export default function PlayerMarkup({ picker, sync, recording }) {
               <select id="rate" defaultValue="1" aria-label={t("Speed")}>
                 {RATES.map((r) => <option key={r} value={r}>{r}x</option>)}
               </select>
+              <select id="quality" aria-label={t("Quality")} hidden />
               <span className="pl-group">
                 <button id="mute" type="button" data-state="on" title={t("Mute (M)")} aria-label={t("Mute")}>
                   <Volume2 className="when-on" aria-hidden="true" />

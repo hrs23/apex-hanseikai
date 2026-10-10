@@ -147,3 +147,35 @@ test("aborts generation when a recording starts and does not count it as a failu
   f.cache.enqueue(name); await f.cache.idle();
   assert.equal((await readMetadata(f.dir)).thumbs.sheets, 1);
 });
+
+test("makes the 720p version only on request and again after its file is removed", async () => {
+  const f = await fixture();
+  const made = [];
+  const cache = new DerivedCache({ recordingsDir: f.recordingsDir, cacheDir: join(f.dir, "..") }, async (command, args) => {
+    if (command === "ffprobe") return JSON.stringify({ format: { duration: 120 }, streams: [{ codec_type: "video", height: 1440 }, { codec_type: "audio" }] });
+    for (const [, file] of (args[args.indexOf("-filter_complex") + 1] ?? "").matchAll(/file=([^,[]+)/g)) await writeFile(file, "");
+    if (args.at(-1).endsWith(".jpg")) await writeFile(join(dirname(args.at(-1)), "thumbs_0.jpg"), "image");
+    if (args.at(-1).endsWith("low.mp4")) { made.push(args.join(" ")); await writeFile(args.at(-1), "small"); }
+    return "";
+  }, f.now);
+  cache.enqueue(name); await cache.idle();
+  let meta = await readMetadata(f.dir);
+  assert.equal(meta.height, 1440);
+  assert.equal(cache.low(name, meta), null);
+  assert.equal(made.length, 0);
+  assert.equal(cache.request(name, "nothing"), false);
+  assert.equal(cache.request("2026-09-27 22-00-00.mp4", "low"), false);
+  assert.equal(cache.request(name, "low"), true);
+  assert.equal(cache.low(name, meta), "processing");
+  await cache.idle();
+  meta = await readMetadata(f.dir);
+  assert.equal(cache.low(name, meta), "ready");
+  assert.match(made[0], /scale=-2:720/);
+  cache.enqueue(name); await cache.idle();
+  assert.equal(made.length, 1);
+  await rm(join(f.dir, "low.mp4"));
+  assert.equal(cache.low(name, meta), null);
+  cache.request(name, "low"); await cache.idle();
+  assert.equal(made.length, 2);
+  assert.equal(cache.low(name, await readMetadata(f.dir)), "ready");
+});

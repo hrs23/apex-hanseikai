@@ -9,7 +9,7 @@ Docker Composeでは `.env`、`docker run` では `-e` で設定します。
 | `RECORDINGS_DIR` | 録画フォルダ。アップロード先も同じ | `./recordings` |
 | `TZ` | 作成時刻のない動画のファイル名に使うタイムゾーン | `UTC` |
 | `BIND_IP` / `PORT` | 待ち受けアドレスとポート | `127.0.0.1` / `8080` |
-| `CACHE_DIR` | 抽出した音声・サムネイル・試合終了の目印 | `./cache` |
+| `CACHE_DIR` | 抽出した音声・サムネイル・試合終了の目印・720p版 | `./cache` |
 
 任意で `config/config.json`（[設定例](https://github.com/hrs23/apex-hanseikai/blob/main/config.example.json)）にタイトルを設定できます。
 
@@ -23,6 +23,10 @@ Docker Composeでは `.env`、`docker run` では `-e` で設定します。
 - リンクは `https://…` か、録画の特定の場面を開くシーンリンク `#watch?rec=<ファイル名>&t=<秒>` が使えます。
 
 APIの `/docs` でも同じ文章を読み書きできます。
+
+## 720p版
+
+回線が遅いときは、プレイヤーの画質メニューで **720p を作成** を選びます。サーバーがその録画の小さい版（約4分の1のサイズ）を作り、画質は各自で選べます。容量を空けるには、`CACHE_DIR` 内のその録画のフォルダから `low.mp4` を削除します。
 
 ## 試合終了の目印
 

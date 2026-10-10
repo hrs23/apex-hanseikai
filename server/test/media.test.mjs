@@ -37,6 +37,7 @@ test("lists cached playback metadata and filters by day", async () => {
   assert.equal(recordings[0].startedAt, "2026-01-03T12:00:00.000Z");
   assert.deepEqual(recordings[0].matchEnds, [60]);
   assert.equal(recordings[0].thumbnails, true);
+  assert.equal(recordings[0].low, null);
   assert.deepEqual(await (await fetch(`${app.base}/api/recordings?day=2026-01-02`)).json(), { recordings: [] });
 });
 test("serves the site config with defaults for missing values", async () => {
@@ -72,4 +73,12 @@ test("uploads a recording once, rejects duplicates, non-mp4 files and bad names"
   assert.equal((await upload("movie.mp4", mp4)).status, 400);
   assert.deepEqual((await readdir(join(root, "rec"))).filter((item) => item.startsWith(".upload")), [".upload-live"]);
   assert.equal((await readdir(join(root, "rec"))).includes("2026-10-05 11-00-00.mp4"), false);
+});
+test("accepts a request to make the 720p version and rejects unknown recordings and stages", async () => {
+  const ask = (body) => fetch(`${app.base}/api/derived`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  assert.equal((await ask({ recording: name, stage: "low" })).status, 202);
+  assert.equal((await ask({ recording: name, stage: "other" })).status, 400);
+  assert.equal((await ask({ recording: "2026-01-04 21-00-00.mp4", stage: "low" })).status, 400);
+  assert.equal((await fetch(`${app.base}/api/derived`)).status, 405);
+  assert.equal((await fetch(`${app.base}/media/audio/${encodeURIComponent(name.slice(0, -4))}/low.mp4`)).status, 404);
 });

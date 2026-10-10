@@ -20,7 +20,7 @@ cd server && RECORDINGS_DIR=<recordings> CACHE_DIR=<cache> npm start
 
 A recording is finished when its MP4 is complete: OBS writes the index and closes the file the moment recording stops. A file that never becomes complete, such as one left by a crash, counts as finished after 30 seconds without changes.
 
-The server looks at the folder every 10 seconds. For a finished recording it extracts each player's audio, detects match ends and makes seek bar thumbnails, in that order. All of it stops while any recording is being written, so it never competes with the game. Open pages are told about every change over `/sync/stream` and update themselves.
+The server looks at the folder every 10 seconds. For a finished recording it extracts each player's audio, detects match ends and makes seek bar thumbnails, in that order. The 720p version is made only when someone asks for it, from the player or with `POST /api/derived`. All of it stops while any recording is being written, so it never competes with the game. Open pages are told about every change over `/sync/stream` and update themselves.
 
 A recording's start time is the creation time OBS stores in the file. For a file without one, it is the time in the file name, read in the `TZ` zone (default `UTC`).
 

@@ -11,7 +11,7 @@ import { removeStaleUploads } from "./upload";
 import { PayloadTooLarge, readObject } from "./json";
 import { PRINCIPLES_SCHEMA, listPrinciples, setPrinciple } from "./principles";
 import { siteConfig } from "./site";
-import { clientLog, errorText, log } from "./log";
+import { clientIp, clientLog, errorText, log } from "./log";
 import { handleSync, notifyHansei, notifyRecordings } from "./sync";
 
 const REQUEST_MAX_BYTES = 128 * 1024;
@@ -61,7 +61,11 @@ async function api(req: IncomingMessage, url: URL): Promise<Result | null> {
     if (day && !/^\d{4}-\d{2}-\d{2}$/.test(day)) return { status: 400, body: { error: "invalid day" } };
     return { status: 200, body: { recordings: await listRecordings(config.media, derived, day) } };
   }
-  if (path === "/api/log") return method === "POST" ? clientLog(req, req.socket.remoteAddress) : NOT_ALLOWED;
+  if (path === "/api/derived") {
+    if (method !== "POST") return NOT_ALLOWED;
+    return jsonBody(req, ({ recording, stage }) => derived.request(recording, stage) ? { status: 202, body: { recording, stage } } : { status: 400, body: { error: "invalid request" } }, "request");
+  }
+  if (path === "/api/log") return method === "POST" ? clientLog(req, clientIp(req)) : NOT_ALLOWED;
   if (path === "/api/principles") return method === "GET" ? listPrinciples(db) : NOT_ALLOWED;
   if ((match = path.match(/^\/api\/principles\/(\d+)$/))) {
     const slot = Number(match[1]);

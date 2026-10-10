@@ -13,7 +13,7 @@ test("serves the OpenAPI spec and the Swagger UI page", async () => {
   const spec = await (await fetch(`${server.base}/openapi.json`)).json();
   assert.equal(spec.openapi, "3.0.3");
   assert.deepEqual(Object.keys(spec.paths).sort(), [
-    "/api/config", "/api/hansei", "/api/hansei/{id}", "/api/health", "/api/log", "/api/principles", "/api/principles/{slot}", "/api/recordings",
+    "/api/config", "/api/derived", "/api/hansei", "/api/hansei/{id}", "/api/health", "/api/log", "/api/principles", "/api/principles/{slot}", "/api/recordings",
     "/media/audio/{recording}/{file}", "/media/rec/{name}", "/sync/draw", "/sync/event", "/sync/presence", "/sync/state", "/sync/stream",
   ]);
   const page = await fetch(`${server.base}/docs`);

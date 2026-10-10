@@ -470,6 +470,37 @@ describe("player interactions", () => {
     expect(box.style.translate).toBe("");
   });
 
+  it("makes a 720p version only when asked and switches to it once it is ready, keeping the position", async () => {
+    const list = (low) => fetch.mockImplementation(async (url) => ({ ok: true, json: async () => url.startsWith("/api/recordings") ? { recordings: [{ ...recording, height: 1440, low }] } : { hansei: [] } }));
+    list(null);
+    const video = await openPlayer();
+    const quality = screen.getByRole("combobox", { name: "Quality" });
+    await waitFor(() => expect([...quality.options].map((option) => option.text)).toEqual(["1440p", "Make 720p"]));
+    expect(quality).toBeVisible();
+    fireEvent.change(quality, { target: { value: "low" } });
+    const request = fetch.mock.calls.find(([url]) => url === "/api/derived");
+    expect(JSON.parse(request[1].body)).toEqual({ recording: recording.name, stage: "low" });
+    expect(quality.selectedOptions[0].text).toBe("Making 720p…");
+    expect(video.getAttribute("src")).toContain("/media/rec/");
+    list("ready");
+    syncOptions.current.onRecordings();
+    await waitFor(() => expect(video.getAttribute("src")).toBe("/media/audio/2026-10-03%2021-00-00/low.mp4"));
+    expect(quality.selectedOptions[0].text).toBe("720p");
+    video.currentTime = 0;
+    fireEvent.loadedMetadata(video);
+    expect(video.currentTime).toBe(100);
+    fireEvent.change(quality, { target: { value: "high" } });
+    expect(video.getAttribute("src")).toContain("/media/rec/");
+    expect(document.querySelector("#osd")).toHaveTextContent("1440p");
+  });
+
+  it("offers no quality choice for a recording that is already 720p or smaller", async () => {
+    fetch.mockImplementation(async (url) => ({ ok: true, json: async () => url.startsWith("/api/recordings") ? { recordings: [{ ...recording, height: 720, low: null }] } : { hansei: [] } }));
+    await openPlayer();
+    await waitFor(() => expect(fetch.mock.calls.some(([url]) => url.startsWith("/api/recordings"))).toBe(true));
+    expect(document.querySelector("#quality")).not.toBeVisible();
+  });
+
   describe("drawing on the paused picture", () => {
     async function openPaused() {
       const video = await openPlayer();
@@ -544,6 +575,16 @@ describe("player interactions", () => {
       drag(video, [160, 90], [800, 450]);
       expect(ink.children).toHaveLength(0);
       expect(syncDraw).not.toHaveBeenCalled();
+    });
+
+    it("draws each viewer's lines in the color the server gave them", async () => {
+      const { video, ink } = await openPaused();
+      syncOptions.current.onColor(2);
+      drag(video, [160, 90], [800, 450]);
+      syncOptions.current.onDraw({ recording: recording.name, from: "other", stroke: 1, points: [0.2, 0.2, 0.3, 0.3], color: 4 });
+      const colors = [...ink.querySelectorAll("polyline:not(.edge)")].map((line) => line.style.stroke);
+      expect(new Set(colors).size).toBe(2);
+      expect(colors.every(Boolean)).toBe(true);
     });
 
     it("shows lines from others and erases everything when the picture moves or X is pressed", async () => {

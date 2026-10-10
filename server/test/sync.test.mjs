@@ -163,8 +163,8 @@ test("relays drawn lines to the other viewers without keeping them", async () =>
   assert.equal((await draw({ points: [] })).status, 204);
   await settle();
   assert.deepEqual(b.events.filter((event) => event.name === "draw").map((event) => event.data), [
-    { recording: REC, from: "pen", stroke: 1, points: [0.1, 0.2, 0.3, 0.4] },
-    { recording: REC, from: "pen", stroke: 1, points: [] },
+    { recording: REC, from: "pen", stroke: 1, points: [0.1, 0.2, 0.3, 0.4], color: 0 },
+    { recording: REC, from: "pen", stroke: 1, points: [], color: 0 },
   ]);
   assert.equal(a.events.some((event) => event.name === "draw"), false);
   assert.equal((await draw({ client: "nobody" })).status, 400);
@@ -176,4 +176,27 @@ test("relays drawn lines to the other viewers without keeping them", async () =>
   await settle();
   assert.equal(late.events.some((event) => event.name === "draw"), false);
   for (const stream of [a, b, late]) stream.close();
+});
+
+test("gives each player their remembered pen color, or the next free one when it is taken", async () => {
+  const join = async (client, color) => {
+    const stream = await listen(client);
+    await fetch(`${BASE}/sync/presence`, { method: "POST", body: JSON.stringify({ client, active: true, typing: false, color }) });
+    await settle();
+    return { ...stream, color: stream.events.find((event) => event.name === "color").data.color };
+  };
+  const first = await join("ann", null);
+  const second = await join("bo", null);
+  const third = await join("cy", "1");
+  const home = await listen("home");
+  assert.deepEqual([first.color, second.color, third.color], [0, 1, 2]);
+  await fetch(`${BASE}/sync/draw`, { method: "POST", body: JSON.stringify({ client: "bo", recording: REC, stroke: 1, points: [0.1, 0.2] }) });
+  await settle();
+  assert.equal(first.events.find((event) => event.name === "draw").data.color, 1);
+  assert.equal(home.events.some((event) => event.name === "color"), false);
+  for (const stream of [first, second, third, home]) stream.close();
+  await settle();
+  const again = await join("cy-later", "2");
+  assert.equal(again.color, 2);
+  again.close();
 });

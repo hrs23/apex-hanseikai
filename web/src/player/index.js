@@ -1,5 +1,6 @@
 import { copyText } from "../lib/clipboard";
-import { formatTime, stem } from "../lib/format";
+import { api } from "../lib/api";
+import { audioUrl, formatTime, stem } from "../lib/format";
 import { t } from "../lib/i18n";
 import { report } from "../lib/report";
 import { setupAudio } from "./audio";
@@ -15,6 +16,8 @@ const VIEWS = [{}, { col: 0, row: 0 }, { col: 1, row: 0 }, { col: 0, row: 1 }, {
 export const RATES = [0.5, 0.75, 1, 1.25, 1.5, 2, 3];
 const METADATA_TIMEOUT_MS = 10_000;
 const MAX_VIDEO_RETRIES = 5;
+const LOW_HEIGHT = 720;
+const QUALITY_KEY = "webplayer:quality";
 
 export function createPlayer(root, { recording, startAt = 0, view = 0, sync = false, onRemoteRecording, onViewers, onHansei, onHanseiChange, onStep }) {
   const ctx = createContext(root);
@@ -25,11 +28,15 @@ export function createPlayer(root, { recording, startAt = 0, view = 0, sync = fa
   let loadSeq = 0;
   let announceNext = false;
   let videoErrors = 0;
+  let info = null;
+  let swap = () => {};
+  let wantLow = false;
+  try { wantLow = localStorage.getItem(QUALITY_KEY) === "low"; } catch {}
 
   const audio = setupAudio(ctx);
   const seekbar = setupSeekbar(ctx);
   const screen = setupScreen(ctx);
-  const remote = setupRemote(ctx, { enabled: sync, view: () => currentView, setView: applyView, screen, onRemoteRecording, onViewers: (count, typing) => { onViewers(count); seekbar.setTyping(typing > 0); }, onHansei: onHanseiChange, onRecordings: () => { if (s.name) void fetchMetadata(); }, onDraw: (line) => ink.receive(line) });
+  const remote = setupRemote(ctx, { enabled: sync, view: () => currentView, setView: applyView, screen, onRemoteRecording, onViewers: (count, typing) => { onViewers(count); seekbar.setTyping(typing > 0); }, onHansei: onHanseiChange, onRecordings: () => { if (s.name) void fetchMetadata(); }, onDraw: (line) => ink.receive(line), onColor: (color) => ink.setColor(color) });
   const ink = setupInk(ctx, { send: remote.draw });
   const quick = setupQuick(ctx, { onHansei, setTyping: remote.setTyping });
 
@@ -90,6 +97,14 @@ export function createPlayer(root, { recording, startAt = 0, view = 0, sync = fa
     osd(t("Speed {rate}x", { rate: next }));
   }
 
+  function showQuality() {
+    const { low } = info;
+    $("quality").hidden = !(info.height > LOW_HEIGHT);
+    $("quality").replaceChildren(new Option(`${info.height}p`, "high"), new Option(low === "ready" ? `${LOW_HEIGHT}p` : low ? t("Making 720p…") : t("Make 720p"), "low"));
+    $("quality").value = wantLow && low ? "low" : "high";
+    swap(wantLow && low === "ready");
+  }
+
   async function fetchMetadata() {
     const name = s.name;
     try {
@@ -102,6 +117,8 @@ export function createPlayer(root, { recording, startAt = 0, view = 0, sync = fa
         applyView(currentView);
       }
       seekbar.setInfo(item);
+      info = item;
+      showQuality();
     } catch (error) {
       report("player-metadata", error, name);
     }
@@ -109,13 +126,27 @@ export function createPlayer(root, { recording, startAt = 0, view = 0, sync = fa
 
   function load(name, from = 0, resume = false) {
     const seq = ++loadSeq;
-    const url = `/media/rec/${encodeURIComponent(name)}`;
+    const original = `/media/rec/${encodeURIComponent(name)}`;
+    let url = original;
     let recover = null;
     videoErrors = 0;
     s.ready = false;
     s.name = stem(name);
     seekbar.reset();
     audio.stop();
+    $("quality").hidden = true;
+    swap = (low) => {
+      const next = low ? audioUrl(s.name, "low.mp4") : original;
+      if (seq !== loadSeq || url === next) return;
+      url = next;
+      if (s.ready) {
+        recover = { time: video.currentTime, playing: !video.paused };
+        osd(`${low ? LOW_HEIGHT : info.height}p`);
+      }
+      s.ready = false;
+      ctx.voice.pause();
+      video.src = url;
+    };
     video.src = url;
     void fetchMetadata();
     video.onloadedmetadata = () => {
@@ -126,6 +157,7 @@ export function createPlayer(root, { recording, startAt = 0, view = 0, sync = fa
         if (recover.playing) video.play().catch(() => {});
         recover = null;
         $("msg").hidden = true;
+        remote.apply(remote.takePending());
         return;
       }
       const pending = remote.takePending();
@@ -166,6 +198,16 @@ export function createPlayer(root, { recording, startAt = 0, view = 0, sync = fa
   ctx.on(video, "playing", () => { videoErrors = 0; });
   $("rate").onchange = () => {
     userRate(+$("rate").value);
+    ctx.focus();
+  };
+  $("quality").onchange = () => {
+    wantLow = $("quality").value === "low";
+    try { localStorage.setItem(QUALITY_KEY, wantLow ? "low" : "high"); } catch {}
+    if (wantLow && !info.low) {
+      info = { ...info, low: "processing" };
+      api("/api/derived", { method: "POST", body: JSON.stringify({ recording: `${s.name}.mp4`, stage: "low" }) }).catch(() => void fetchMetadata());
+    }
+    showQuality();
     ctx.focus();
   };
   $("link").onclick = async () => {

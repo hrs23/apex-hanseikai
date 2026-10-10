@@ -2,6 +2,7 @@ import { report } from "../lib/report";
 
 const START_PX = 4;
 const BATCH = 100;
+const COLORS = ["#ff8a00", "#00d5ff", "#7cff4f", "#ff5ad6", "#ffe83d", "#b48cff"];
 
 export function setupInk(ctx, { send }) {
   const { $, video, on, s } = ctx;
@@ -10,6 +11,7 @@ export function setupInk(ctx, { send }) {
   const outbox = [];
   let box = { x: 0, y: 0, size: 1 };
   let count = 0;
+  let mine = 0;
   let press = null;
   let sending = false;
 
@@ -33,7 +35,7 @@ export function setupInk(ctx, { send }) {
     if (!sending) void flush();
   }
 
-  function extend(key, points) {
+  function extend(key, points, color) {
     let line = lines.get(key);
     if (!line) {
       line = { els: ["edge", "core"].map((name) => {
@@ -41,6 +43,7 @@ export function setupInk(ctx, { send }) {
         el.setAttribute("class", name);
         return el;
       }), text: `${points[0]},${points[1]}` };
+      line.els[1].style.stroke = COLORS[color];
       lines.set(key, line);
       layer.append(...line.els);
     }
@@ -61,7 +64,7 @@ export function setupInk(ctx, { send }) {
     const key = next.join();
     if (key === press.last) return;
     press.last = key;
-    extend(`me:${press.stroke}`, next);
+    extend(`me:${press.stroke}`, next, mine);
     queue(press.stroke, next);
   }
 
@@ -95,9 +98,12 @@ export function setupInk(ctx, { send }) {
       box = view.col === undefined ? { x: 0, y: 0, size: 1 } : { x: view.col / 2, y: view.row / 2, size: 0.5 };
       layer.setAttribute("viewBox", `${box.x} ${box.y} ${box.size} ${box.size}`);
     },
-    receive({ from, stroke, points }) {
+    receive({ from, stroke, points, color }) {
       if (!points.length) erase();
-      else if (video.paused) extend(`${from}:${stroke}`, points);
+      else if (video.paused) extend(`${from}:${stroke}`, points, color);
+    },
+    setColor(color) {
+      mine = color;
     },
     eraseAll() {
       erase();

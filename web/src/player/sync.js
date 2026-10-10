@@ -5,11 +5,12 @@ const STALE_STREAM_MS = 50_000;
 const RECONNECT_MS = 3000;
 const RESYNC_MS = 2000;
 const CLOCK_SAMPLES = 5;
+const COLOR_KEY = "webplayer:pen";
 
 const request = (url, options = {}) => fetch(url, { ...options, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
 const post = (url, body) => request(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
-export function createSync({ read, apply, onViewers, onHansei, onRecordings, onDraw, enabled = false }) {
+export function createSync({ read, apply, onViewers, onHansei, onRecordings, onDraw, onColor, enabled = false }) {
   const client = crypto.randomUUID?.() ?? Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, "0")).join("");
   let active = enabled;
   let typing = false;
@@ -48,7 +49,11 @@ export function createSync({ read, apply, onViewers, onHansei, onRecordings, onD
       return false;
     }
   }
-  const presence = () => navigator.sendBeacon?.("/sync/presence", JSON.stringify({ client, active, typing }));
+  const presence = () => {
+    let color = 0;
+    try { color = Number(localStorage.getItem(COLOR_KEY)); } catch {}
+    navigator.sendBeacon?.("/sync/presence", JSON.stringify({ client, active, typing, color }));
+  };
   let events;
   let lastHeard = Date.now();
   let reconnectTimer = 0;
@@ -75,6 +80,11 @@ export function createSync({ read, apply, onViewers, onHansei, onRecordings, onD
     listen("hansei", (event) => onHansei?.(JSON.parse(event.data).recording));
     listen("recordings", () => onRecordings?.());
     listen("draw", (event) => { if (active) onDraw?.(JSON.parse(event.data)); });
+    listen("color", (event) => {
+      const { color } = JSON.parse(event.data);
+      try { localStorage.setItem(COLOR_KEY, color); } catch {}
+      onColor?.(color);
+    });
     source.addEventListener("error", () => {
       if (source.readyState === 2 && !closed && events === source) reconnectTimer = setTimeout(connect, RECONNECT_MS);
     });

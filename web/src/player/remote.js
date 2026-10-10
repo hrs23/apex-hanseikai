@@ -7,7 +7,7 @@ const EVENT_LIMIT = 0.7;
 const PAUSED_LIMIT = 0.01;
 const CORRECTION_GAP_MS = 5000;
 
-export function setupRemote(ctx, { enabled, view, setView, screen, onRemoteRecording, onViewers, onHansei, onRecordings, onDraw }) {
+export function setupRemote(ctx, { enabled, view, setView, screen, onRemoteRecording, onViewers, onHansei, onRecordings, onDraw, onColor }) {
   const { $, video, on, osd, s } = ctx;
   let active = enabled;
   let pending = null;
@@ -60,7 +60,7 @@ export function setupRemote(ctx, { enabled, view, setView, screen, onRemoteRecor
     }
   }
 
-  const session = createSync({ read: snapshot, apply, onViewers, onHansei, onRecordings, onDraw: (line) => { if (line.recording === current()) onDraw(line); }, enabled });
+  const session = createSync({ read: snapshot, apply, onViewers, onHansei, onRecordings, onDraw: (line) => { if (line.recording === current()) onDraw(line); }, onColor, enabled });
   ctx.cleanup(() => {
     session.setTyping(false);
     session.destroy();

@@ -9,7 +9,7 @@ Set these in `.env` for Docker Compose, or with `-e` for `docker run`.
 | `RECORDINGS_DIR` | Recording folder; uploads are saved here too | `./recordings` |
 | `TZ` | Time zone for file names without creation metadata | `UTC` |
 | `BIND_IP` / `PORT` | Listening address and port | `127.0.0.1` / `8080` |
-| `CACHE_DIR` | Extracted audio, thumbnails and match markers | `./cache` |
+| `CACHE_DIR` | Extracted audio, thumbnails, match markers and 720p versions | `./cache` |
 
 Optional: `config/config.json` ([example](https://github.com/hrs23/apex-hanseikai/blob/main/config.example.json)) sets the title.
 
@@ -23,6 +23,10 @@ The home page has four editable cards: one for the team and three personal ones.
 - A link is either `https://…` or a scene link, `#watch?rec=<file name>&t=<seconds>`, that opens a recording at that moment.
 
 The API (`/docs`) reads and writes the same text.
+
+## 720p version
+
+For a slow connection, pick **Make 720p** in the player's quality menu. The server then makes a smaller copy of that recording (about a quarter of the size) and each viewer chooses their own quality. To free the space, delete `low.mp4` from that recording's folder in `CACHE_DIR`.
 
 ## Match end markers
 

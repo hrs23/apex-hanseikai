@@ -8,6 +8,8 @@ const CLIENT_LOGS_PER_MINUTE = 60;
 
 export const errorText = (error: unknown): string => (error instanceof Error ? error.stack ?? error.message : String(error));
 
+export const clientIp = (req: IncomingMessage): string | undefined => String(req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() || req.socket.remoteAddress;
+
 export function log(event: string, fields: Record<string, unknown> = {}): void {
   console.log(JSON.stringify({ t: new Date().toISOString(), event, ...fields }));
 }

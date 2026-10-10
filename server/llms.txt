@@ -6,6 +6,7 @@
 - [Squad setup](https://raw.githubusercontent.com/hrs23/apex-hanseikai/main/docs/en/squad.md)
 - [Reference: settings and principle Markdown](https://raw.githubusercontent.com/hrs23/apex-hanseikai/main/docs/en/reference.md)
 - Data: `GET /api/recordings` lists recordings (start time, duration, match end positions); `GET /api/hansei?recording=<name>` returns notes; `GET /media/rec/<name>` downloads the MP4 (Range supported); `GET /media/audio/<name without .mp4>/1.m4a` is a player's audio.
+- 720p: `POST /api/derived` with `{"recording": "<name>", "stage": "low"}` makes a smaller version on request; when `low` in the list is `ready` it is at `/media/audio/<name without .mp4>/low.mp4`.
 - Notes: `POST /api/hansei` with `{"recording": "<name>", "at": "<UTC time>" or null, "body": "…"}`; `at` is the recording's `startedAt` plus the position in the video.
 - Principles: `GET /api/principles`; `PUT /api/principles/<slot>` with `{"body": "…"}`. Slot 0 is the team, 1 to 3 are personal; Markdown, up to 500 characters.
 - API: `/docs` (reference) and `/openapi.json` (spec) on the server that serves this file

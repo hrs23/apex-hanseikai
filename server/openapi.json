@@ -108,6 +108,52 @@
         "description": "Listing also queues any recording whose audio, match ends or thumbnails are missing."
       }
     },
+    "/api/derived": {
+      "post": {
+        "summary": "Make or remake one derived file of a recording",
+        "tags": [
+          "media"
+        ],
+        "description": "`low` makes the 720p version, which is never made on its own. `audio`, `markers` and `thumbs` remake the player audio, match ends and thumbnails. The work is queued and waits while a recording is in progress; follow it in `GET /api/recordings`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "recording",
+                  "stage"
+                ],
+                "properties": {
+                  "recording": {
+                    "type": "string",
+                    "example": "2026-10-03 22-54-36.mp4"
+                  },
+                  "stage": {
+                    "type": "string",
+                    "enum": [
+                      "audio",
+                      "markers",
+                      "thumbs",
+                      "low"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Queued"
+          },
+          "400": {
+            "description": "Unknown recording or stage"
+          }
+        }
+      }
+    },
     "/api/hansei": {
       "get": {
         "summary": "List notes (filter by recording)",
@@ -449,7 +495,7 @@
     },
     "/media/audio/{recording}/{file}": {
       "get": {
-        "summary": "Derived audio tracks and thumbnail sheets",
+        "summary": "Derived audio tracks, thumbnail sheets and the 720p version",
         "tags": [
           "media"
         ],
@@ -485,7 +531,7 @@
             "description": "Not generated yet"
           }
         },
-        "description": "`1.m4a` and up are the audio of each player in cell order (see `players`). `thumbs_1.jpg` and up are seek bar thumbnail sheets, present when `thumbnails` is true."
+        "description": "`1.m4a` and up are the audio of each player in cell order (see `players`). `thumbs_1.jpg` and up are seek bar thumbnail sheets, present when `thumbnails` is true. `low.mp4` is the 720p version, present when `low` is `ready`."
       }
     },
     "/sync/stream": {
@@ -509,7 +555,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Events: state (SyncState or null, with the optional action label), viewers ({count, typing}), hansei ({recording}), recordings (the list or a recording's state changed), draw ({recording, from, stroke, points})",
+            "description": "Events: state (SyncState or null, with the optional action label), viewers ({count, typing}), hansei ({recording}), recordings (the list or a recording's state changed), draw ({recording, from, stroke, points}, color}), color ({color}: this client's pen color number, see `/sync/presence`)",
             "content": {
               "text/event-stream": {}
             }
@@ -599,6 +645,10 @@
                   },
                   "typing": {
                     "type": "boolean"
+                  },
+                  "color": {
+                    "type": "integer",
+                    "description": "The pen color number this browser had last time. The first presence of a connection is answered with a `color` event: this number, or the next one nobody in the room is using"
                   }
                 }
               }
@@ -900,6 +950,20 @@
               "type": "number"
             },
             "description": "Match end positions in seconds"
+          },
+          "height": {
+            "type": "integer",
+            "description": "Picture height in pixels. 0 while unknown"
+          },
+          "low": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "ready",
+              "processing",
+              null
+            ],
+            "description": "The 720p version: ready, being made, or null when nobody asked for it"
           }
         }
       },

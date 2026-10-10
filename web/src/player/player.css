@@ -48,6 +48,7 @@
 .pl-player #controls button, .pl-player #controls select, .pl-player #controls a { display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 4px; background: transparent; color: var(--pl-dim); padding: 4px 8px; font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; }
 .pl-player #controls button:hover, .pl-player #controls select:hover, .pl-player #controls a:hover { color: var(--pl-fg); background: rgba(128, 128, 128, 0.18); }
 .pl-player #controls svg { width: 1.05rem; height: 1.05rem; }
+.pl-player #controls #quality[hidden] { display: none; }
 #play { width: 34px; color: var(--pl-fg); }
 #play[data-state="playing"] .when-paused, #play[data-state="paused"] .when-playing { display: none; }
 #mute[data-state="muted"] .when-on, #mute[data-state="on"] .when-muted { display: none; }

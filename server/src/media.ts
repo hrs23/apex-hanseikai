@@ -2,7 +2,7 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { extname, join } from "node:path";
-import { log } from "./log";
+import { clientIp, log } from "./log";
 import { DerivedCache, readMetadata, sameSource, type State } from "./derived";
 import { RECORDING_NAME, recordingStart } from "./recording";
 import { uploadRecording } from "./upload";
@@ -15,6 +15,7 @@ const TYPES: Record<string, string> = {
 };
 
 const SAFE_NAME = /^[^/\\]+$/;
+const RATE_WINDOW_MS = 3000;
 
 export interface MediaConfig {
   recordingsDir: string;
@@ -29,6 +30,8 @@ interface Recording {
   players: string[];
   thumbnails: boolean;
   matchEnds: number[];
+  height: number;
+  low: "ready" | "processing" | null;
 }
 
 export async function listRecordings(config: MediaConfig, cache: DerivedCache, day?: string): Promise<Recording[]> {
@@ -56,6 +59,8 @@ export async function listRecordings(config: MediaConfig, cache: DerivedCache, d
       players: meta?.tracks === undefined ? [] : meta.players ?? [],
       matchEnds: meta?.matchEnds ?? [],
       thumbnails: !!meta?.thumbs,
+      height: meta?.height ?? 0,
+      low: cache.low(name, meta),
     });
   }
   return result.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
@@ -110,11 +115,21 @@ function serveFile(req: IncomingMessage, res: ServerResponse, file: string): voi
   const stream = createReadStream(file, { start, end });
   const began = Date.now();
   let sent = 0;
-  stream.on("data", (chunk) => { sent += chunk.length; });
+  let mark = began;
+  let marked = 0;
+  let peak = 0;
+  stream.on("data", (chunk) => {
+    sent += chunk.length;
+    const now = Date.now();
+    if (now - mark < RATE_WINDOW_MS) return;
+    if (marked) peak = Math.max(peak, (sent - marked) * 8 / (now - mark) / 1000);
+    mark = now;
+    marked = sent;
+  });
   stream.on("error", () => res.destroy());
   res.on("close", () => {
     stream.destroy();
-    log("media", { url: req.url, status, range: `${start}-${end}`, sent, complete: sent === end - start + 1, ms: Date.now() - began, ip: req.socket.remoteAddress });
+    log("media", { url: req.url, status, range: `${start}-${end}`, sent, complete: sent === end - start + 1, ms: Date.now() - began, peakMbps: Math.round(peak * 10) / 10, ip: clientIp(req) });
   });
   stream.pipe(res);
 }
@@ -143,7 +158,7 @@ export function handleMedia(req: IncomingMessage, res: ServerResponse, config: M
   } else if (parts.length === 2 && parts[0] === "rec" && RECORDING_NAME.test(parts[1])) {
     cache.enqueue(parts[1], true);
     serveFile(req, res, join(config.recordingsDir, parts[1]));
-  } else if (parts.length === 3 && parts[0] === "audio" && /^(\d+\.m4a|thumbs_\d+\.jpg)$/.test(parts[2])) {
+  } else if (parts.length === 3 && parts[0] === "audio" && /^(\d+\.m4a|thumbs_\d+\.jpg|low\.mp4)$/.test(parts[2])) {
     serveFile(req, res, join(config.cacheDir, parts[1], parts[2]));
   } else {
     res.writeHead(404).end();
